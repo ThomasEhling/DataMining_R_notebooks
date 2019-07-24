@@ -1,0 +1,474 @@
+---
+title: "CS 422 Section 04 Homework 3"
+author: "Thomas Ehling A20432671"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+## Homework 2
+### Due Date: Friday, October 12, 2018 11:59:59 PM Chicago Time
+
+## 1 Exercices
+
+### Chapter 4 : q2
+
+### Chapter 4 : q3
+
+### Chapter 4 : q5
+
+
+## 2 Practiclum Problems
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(cluster)
+library(factoextra)
+library(ggplot2)
+library(fpc)
+```
+
+
+## 2.1 Problem 1
+
+```{r}
+set.seed(1122)
+
+#setwd('/home/french_magician/Documents/Chicago/DM/Assigment_3')
+
+rm(list=ls())
+
+options("digits"=3)
+
+df_mammals <- read.csv("mammals.csv", sep=",", header=T)
+
+head(df_mammals)
+```
+
+```{r}
+summary(df_mammals)
+```
+
+```{r}
+str(df_mammals$Name)
+#df_mammals$Name <- as.factor(df_mammals$Name)
+#str(df_mammals$Name)
+```
+
+
+### 2.1-A.i
+
+```{r}
+df_mammals[2:9] <- scale(df_mammals[2:9])
+```
+
+
+```{r}
+# d <- dist(df_mammals[2:9], method="euclidean", upper=T, diag=T) # L2
+# d
+
+# d <- dist(df_mammals[2:9], method="manhattan", upper=T, diag=T) # L1
+# d
+
+# d <- dist(df_mammals[2:9], method="maximum", upper=T, diag=T) # L_max
+#d
+```
+
+Sould we remove C and c ? I think we should not remove any of these logically.
+
+### 2.1-A.ii
+
+?
+
+### 2.1-A.iii
+Done
+
+### 2.1-B.i
+```{r}
+# How many clusters?  A couple of means to visuzalize it.
+fviz_nbclust(df_mammals[2:9], kmeans, method="wss", k.max = 12) # Elbow method minimizes total
+# within-cluster sum of squares (wss).  Also called a "Scree" plot.
+
+# Silhouette measures the quality of a cluster, i.e., how well each 
+# point lies within its cluster.
+fviz_nbclust(df_mammals[2:9], kmeans, method="silhouette", k.max = 12) # But hey, what does it know?```
+```
+
+### 2.1-B-ii
+```{r}
+# What happens if we choose more clusters?
+fviz_cluster(kmeans(df_mammals[2:9], centers=2, nstart=25), data=df_mammals[2:9])
+# Is 4 enough?  Or 5?  Or 6?...
+fviz_cluster(kmeans(df_mammals[2:9], centers=3, nstart=25), data=df_mammals[2:9])
+
+fviz_cluster(kmeans(df_mammals[2:9], centers=5, nstart=25), data=df_mammals[2:9])
+
+fviz_cluster(kmeans(df_mammals[2:9], centers=7, nstart=25), data=df_mammals[2:9])
+
+fviz_cluster(kmeans(df_mammals[2:9], centers=8, nstart=25), data=df_mammals[2:9])
+
+fviz_cluster(kmeans(df_mammals[2:9], centers=9, nstart=25), data=df_mammals[2:9])
+
+fviz_cluster(kmeans(df_mammals[2:9], centers=21, nstart=25), data=df_mammals[2:9])
+```
+```{r}
+clusters <- kmeans(df_mammals[2:9], centers=7, nstart=150)
+fviz_cluster(clusters, data=df_mammals[2:9])
+```
+
+According to the silhouette and the wss curves, 5 seems to be a reasonnable number of clusters.
+Especially according to the wss curve, because the biggest elbow is for a cluster number of five.
+
+I increase the nstart parameter so the composition of the cluster remain constant.
+
+### 2.1-B-iii
+
+```{r}
+str(clusters)
+```
+
+```{r}
+df_mammals$Cluster_nb <- as.factor(clusters$cluster)
+summary(df_mammals)
+```
+```{r}
+cluster_sizes <- clusters$size
+for( size in  1:length(cluster_sizes) ){
+  cat(paste("The Cluster ",size," have ", cluster_sizes[size], " observations"))
+  cat(paste("\n\n"))
+}
+```
+
+
+### 2.1-B-iv
+```{r}
+cat(paste("The sse is ", clusters$tot.withinss))
+```
+
+### 2.1-B-v
+The clusters sse are :
+```{r}
+clusters_sse <- clusters$withinss
+for( sse in  1:length(clusters_sse) ){
+  cat(paste("Cluster",sse," : ", clusters_sse[sse]))
+  cat(paste("\n\n"))
+}
+
+```
+
+### 2.1-B-vi
+```{r}
+for( val_1 in  1:length(cluster_sizes) ){
+  cat(paste("Cluster",val_1," : "))
+  for (val in which(df_mammals$Cluster_nb == val_1)){ cat(paste(df_mammals$Name[val]," ")) }
+  cat(paste("\n\n"))
+}
+```
+
+Analysis : There is a large probability that an animals teeth are related to it nutrition, but as we are no expert in this area, our analysis will be on the animal's types.
+
+Cluster 1 : Coherent : Two huge animals, eating fish and leaving in the sea.
+
+Cluster 2 : Semi-Coherent : If most of the animals in this cluster are living near the water (river or sea), some animals like the jaguar or lynx does not seems to fit with the others.
+
+Cluster 3 : Coherent : regroup animals living in the mountains.
+
+Cluster 4 : Semi-Coherent : Regroup no predators, Only animals we could fine in fields. Include all of the rodents. However some animals like the beaver doesn't make sense without further analysis.
+
+Cluster 5 : Coherent, composed of animals living in arid area : moles, coyotes, wolfs,foxes. And all these animals are carnivors.
+
+Cluster 6 : Coherent : gather all the bats of the sata set. However the Peccary look like an mistake
+
+Cluster 7 : Composed of only one special animal, the Armadillo, wich seems to have a dentition on his own.
+
+That is really good, because no cluster is extremely incoherent.
+
+## 2.2 Problem 2
+
+```{r}
+set.seed(1122)
+df_mammals <- read.csv("mammals.csv", sep=",", header=T, row.names = 1)
+
+df_mammals_sample <- dplyr::sample_n(df_mammals, 35)
+df_mammals_sample
+```
+
+### 2.2-A
+```{r}
+link_simple <-  eclust(df_mammals_sample, "hclust", graph = TRUE, hc_method = "single")
+link_complete <-  eclust(df_mammals_sample, "hclust", graph = TRUE, hc_method = "complete")
+link_average <-  eclust(df_mammals_sample, "hclust", graph = TRUE, hc_method = "average")
+
+fviz_dend(link_simple, main = "Single", show_labels = TRUE, color_labels_by_k = TRUE) 
+fviz_dend(link_complete , main = "Complete",  k_colors = c("blue"))
+fviz_dend(link_average, main = "Average",  k_colors = c("black"))
+```
+
+### 2.2-B
+The two-singletons clusters :
+
+Simple : 5
+{Groundhog, Prairie Dog}
+{Elk, Reindeer}
+{Ocelot, Jaguar}
+{Badger, Shunk}
+{Silver hair bat, House bat}
+
+Compexe : 8
+{Groundhog, Prairie_Dog}
+{Sea_Lion, Elephant_seal}
+{Ocelot , Jaguar}
+{Badger, Skunk}
+{Raccoon, Star_nose_mole}
+{Elk, Reindeer}
+{Hoary_bat, Pigmy_bat}
+{Silver_hair_bat, Lump_nose_bat}
+
+Average : 8
+{Groundhog, Prairie Dog}
+{Racoon, Common mole}
+{Sea lion, Elephant seal}
+{Ocelot, Jaguar}
+{Badger, Shunk}
+{Elk, Reindeer}
+{Silver hair bat, House bat}
+{Hoary bat, Pigmy bat}
+
+### 2.2-C
+
+It would be the simple linkage, because it has less two-singleton clusters than the others.
+
+
+### 2.2-D
+
+Depends on the chosen one.
+```{r}
+fviz_dend(link_simple, main = "Single", show_labels = TRUE, color_labels_by_k = TRUE) + geom_hline(yintercept = 2, linetype = 2)
+```
+
+For a height of 2, we would have 5 clusters.
+
+### 2.2-E
+```{r}
+link_simple <-  eclust(df_mammals_sample, "hclust",  k = 5, graph = TRUE, hc_method = "single")
+link_complete <-  eclust(df_mammals_sample, "hclust",  k = 5, graph = TRUE, hc_method = "complete")
+link_average <-  eclust(df_mammals_sample, "hclust", k = 5, graph = TRUE, hc_method = "average")
+
+fviz_dend(link_simple, main = "Single", show_labels = TRUE, color_labels_by_k = TRUE) + geom_hline(yintercept = 2, linetype = 2)
+fviz_dend(link_complete , main = "Complete",  color_labels_by_k = TRUE) + geom_hline(yintercept = 2, linetype = 2)
+fviz_dend(link_average, main = "Average",  color_labels_by_k = TRUE) + geom_hline(yintercept = 2, linetype = 2)
+```
+
+### 2.2-F
+```{r}
+options("digits"=3)
+
+dd <- dist(df_mammals_sample, method ="euclidean")
+stat_single <- cluster.stats(d = dd, link_simple$cluster, silhouette = TRUE)
+stat_complete <- cluster.stats(d = dd, link_complete$cluster, silhouette = TRUE)
+stat_average <- cluster.stats(d = dd, link_average$cluster, silhouette = TRUE)
+
+cat(paste("\n linkage simgle :  dun : ", stat_single$dunn, " and silhouette : ", stat_single$avg.silwidth))
+cat(paste("\n linkage complete :  dun : ", stat_complete$dunn, " and silhouette : ", stat_complete$avg.silwidth))
+cat(paste("\n linkage average :  dun : ", stat_average$dunn, " and silhouette : ", stat_average$avg.silwidth))
+```
+
+### 2.2-G
+
+The single linkage model has the highest dunn and silhouette width, so we would choose it. That correlate with the informations found before.
+
+
+## 2.3 Problem 2
+
+### 2.3
+
+```{r}
+set.seed(1122)
+
+#setwd('/home/french_magician/Documents/Chicago/DM/Assigment_3')
+
+rm(list=ls())
+
+options("digits"=3)
+df_htru <- read.csv("HTRU_2-small.csv", sep=",", header=T)
+head(df_htru)
+```
+
+```{r}
+df_htru_scaled <- scale(df_htru)
+pca <- prcomp(df_htru_scaled)
+names(pca)
+```
+
+```{r}
+pca$sdev
+```
+
+### 2.3-A.i
+
+```{r}
+options("digits"=2)
+variances <- pca$sdev
+cat(paste("Total TCumulative variance :", sum(variances)))
+cat(paste("\nThe first component explains ", variances[1]/sum(variances)*100," %"))
+cat(paste("\nThe second component explains ", variances[2]/sum(variances)*100," %"))
+```
+
+### 2.3-A.ii
+
+```{r}
+pca$rotation <- -pca$rotation
+pca$rotation
+```
+
+```{r}
+biplot(pca, scale=0)
+```
+
+```{r}
+df_htru$class = as.factor(df_htru$class)
+
+classcolor = c("#CC0000", "green")[df_htru$class]
+
+plot(pca$x[,1],pca$x[,2], col =  classcolor, xlab = "PC1", ylab="PC2") 
+legend(-12, -3, legend=c("Class 0", "Class 1"), col=c("#CC0000", "green"), pch=c(20,20))
+```
+
+### 2.3-A.iii
+
+We know that PC1 is representative of the attributes : mean, kurtosis, skewness, mean.dm.snr ans class
+
+And PC2 : std.dev, kurtosis.dm.snr, skewness.dm.snr.
+
+For the class O :
+  - The elements of the clas 0 tend to be on the positive value of PC2, wich mean that they are more representative of 
+  attribute listed above for PC2.
+  - However, on the x absis, they remain ammong the negative values, and so, do not coerce with the attributes that represent PC1.
+  
+For the class O :
+  - The elements of the clas 0 are equally spread along the y axis, so the attributes represented by PC2 does not have any effects on the distribution.
+  - However, on the x absis, they remain ammong the positive values, and so, coerce with the attributes that represent PC1.
+
+### 2.3-B
+### 2.3-B-i
+```{r}
+clusters <- kmeans(df_htru_scaled, centers=2, nstart=25)
+fviz_cluster(clusters, df_htru_scaled)
+```
+
+### 2.3-B.ii
+
+The two clusters are similar to the two class found in a(ii). 
+
+This is normal because the two principal component from PCA represents roughly the same variance as the original distribution.
+
+### 2.3-B.iii
+```{r}
+cluster_sizes <- clusters$size
+for( size in  1:2 ){
+  cat(paste("The Cluster ",size," have ", cluster_sizes[size], " observations"))
+  cat(paste("\n\n"))
+}
+```
+
+### 2.3-B.iv
+
+```{r}
+cat(paste("The Class 0 have ", sum(df_htru[,9] == "0"), " observations"))
+cat(paste("\n\n"))
+cat(paste("The Class 1 have ", sum(df_htru[,9] == "1"), " observations"))
+cat(paste("\n\n"))
+```
+
+
+### 2.3-B.v
+
+According to the number of observations, the cluster 1 correspond to the majority class 0, and the cluster 2 correpond to the minority class 1.
+
+### 2.3-B.vi
+
+```{r}
+cat(paste("The Cluster 1 have ", cluster_sizes[1], " observations"))
+
+cluter1_cl0 <- sum(clusters$cluster == "1" & df_htru[,9] == "0")
+cluter1_cl1 <- sum(clusters$cluster == "1" & df_htru[,9] == "1")
+
+cat(paste("\nThere are ", cluter1_cl0, " observations from class 0"))
+cat(paste("\nThere are ", cluter1_cl1, " observations from class 1"))
+```
+
+### 2.3-B.vii
+
+The large cluster, cluster 1, represents the CLass 0. This correlate with the previous observations.
+
+### 2.3-B.viii
+
+```{r}
+variance <- (clusters$betweenss / clusters$totss) * 100
+cat(paste(variance, "% of the total variance is explained by clustering. \n"))
+
+```
+
+### 2.3-B.ix
+
+```{r}
+statistic<- cluster.stats(dist(df_htru_scaled, method = "euclidean"), clusters$cluster, silhouette = TRUE)
+cat(paste("The average silhouette width is ", statistic$avg.silwidth, "\n"))
+```
+As  it takes a long time to compute, I copy paste the results here :
+"The average silhouette Width is 0.64"
+
+### 2.3-B.x
+
+```{r}
+cat(paste("The average silhouette width for cluster 1 is : ",statistic$clus.avg.silwidths[1]))
+cat(paste("\nThe average silhouette width for cluster 2 is : ",statistic$clus.avg.silwidths[2]))
+```
+The average silhouette width for cluster 1 is :  0.66
+The average silhouette width for cluster 2 is :  0.37
+
+According to this result, cluster number 1 is better, as it has the highest silhouette width.
+
+### 2.3-C
+
+### 2.3-C.i
+
+```{r}
+clusters_c12 <- kmeans(pca$x[,1:2], centers=2, nstart=25)
+fviz_cluster(clusters_c12, pca$x[,1:2])
+```
+
+The shape is very familiar from the previous graphs.
+
+### 2.3-C.ii
+
+```{r}
+statistic_c12<- cluster.stats(dist(df_htru_scaled, method = "euclidean"), clusters_c12$cluster, silhouette = TRUE)
+cat(paste("The average silhouette width is ", statistic_c12$avg.silwidth, "\n"))
+```
+As  it takes a long time to compute, I copy paste the results here :
+"The average silhouette Width is 0.64"
+
+### 2.3-C.iii
+
+```{r}
+cat(paste("The average silhouette width for cluster 1 is : ",statistic_c12$clus.avg.silwidths[1]))
+cat(paste("\nThe average silhouette width for cluster 2 is : ",statistic_c12$clus.avg.silwidths[2]))
+```
+The average silhouette width for cluster 1 is :  0.66
+The average silhouette width for cluster 2 is :  0.37
+
+According to this result, cluster number 1 is better, as it has the highest silhouette width.
+
+### 2.3-C.iv
+The overall value is the same, and the values of the average silhouette are the same too.
+
+
+

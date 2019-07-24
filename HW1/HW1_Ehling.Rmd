@@ -1,0 +1,451 @@
+---
+title: "CS 422 Section 04 Homework 1"
+author: "Thomas Ehling A20432671"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+## 2 Problems
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(psych)
+```
+
+
+## 2.1 Problem 1
+
+###(a) Reading the college dataset
+
+```{r}
+setwd('/home/french_magician/Documents/Chicago/DM/Assigment_1')
+df_college <- read.csv("College.csv", sep=",", header=T)
+head(df_college,6)
+```
+
+###(b) Number of private and public colleges
+```{r}
+cat("There are", sum(df_college$Private == 'Yes'),"private colleges")
+```
+Number of public colleges :
+```{r}
+cat("There are", sum(df_college$Private == 'No'),"private colleges")
+```
+
+###(c) We create 2 dataframes, one for the public colleges and one for the privates, and print their histogram :
+```{r}
+df_privates <- dplyr::filter(df_college, Private == "Yes")
+head(df_privates)
+```
+```{r}
+hist(df_privates$PhD, freq = FALSE,  xlab="Phd", main = "Histogram of private schools PhD", col = "pink")
+lines(density(df_privates$PhD), lwd = 3, col = "red")
+```
+
+```{r}
+df_publics <- dplyr::filter(df_college, Private == "No")
+head(df_publics)
+```
+```{r}
+hist(df_publics$PhD, freq = FALSE, xlab="Phd", main = "Histogram of public schools PhD", col = "cyan")
+lines(density(df_publics$PhD), lwd = 2,  col = "blue")
+```
+
+```{r}
+
+hist(df_publics$PhD, col="cyan", freq=FALSE, main = "Histogram of PhDs",xlab = "PhDs")
+hist(df_privates$PhD, freq=FALSE, col="pink" , add=TRUE)
+hist(df_publics$PhD, col="cyan", freq=FALSE, add=TRUE)
+hist(df_privates$PhD, freq=FALSE, col=rgb(1,0,1,0.5) , add=TRUE)
+lines(density(df_publics$PhD), lwd = 2,  col = "blue")
+lines(density(df_privates$PhD), lwd = 3, col = "red")
+legend("topleft", c("Private schools", "Public schools"), fill=c("pink", "cyan"))
+
+```
+
+We can conclude from the histograms that public schools are top-heavy with respect to PhD faculty.
+
+###(d) Print of the Five first and last colleges according to their grades
+
+```{r}
+
+df_grad <- df_college
+df_grad <- dplyr::select(df_grad, Name, Grad.Rate)
+df_grad <- dplyr::arrange(df_grad, df_grad$Grad.Rate)
+```
+The Top Five college with the highest graduation rate are:
+```{r}
+tail(df_grad, 5)
+```
+The Top Five college with the lowest graduation rate are:
+```{r}
+head(df_grad, 5)
+```
+
+
+###(e).i. summarry of the data_set
+```{r}
+summary(df_college)
+```
+###(e).ii. scatterplot
+
+```{r}
+pairs(df_college[,1:10], main="Simple Scatterplot Matrix")
+```
+
+###(e).iii. boxplots of donations
+
+```{r}
+
+boxplot(df_publics$perc.alumni, df_privates$perc.alumni,names=c("Public", "Private"), ylab = "Donation", main = "Boxplots of donations from students of Public and Private colleges", col = c("cyan", "pink") )
+
+
+```
+
+We can conclude that the students from the private colleges donate more money to their colleges that the students from the public ones.
+
+
+###(e).iv. boxplots of PhD
+
+```{r}
+
+boxplot(df_publics$PhD, df_privates$PhD,names=c("Public", "Private"), ylab = "Number of PhD students", main = "Boxplots of the number of Phd students of Public and Private colleges", col = c("cyan", "pink"))
+
+
+```
+
+We can conclude that there are more students from the public colleges who are Phd students, compare to private colleges.
+
+
+###(e).v. New qualitative variable
+
+```{r}
+
+col_elites <- rep("No", nrow(df_college))
+col_elites[df_college$Top10perc > 50] <- "Yes"
+col_elites <- as.factor(col_elites)
+df_college <- data.frame(df_college, col_elites)
+names(df_college)[ncol(df_college)] <- "Elite"
+summary(df_college)
+
+```
+
+After creating and addind the new qualitative variable "Elites" as a new column of the college dataframe, we can note they are only 78 Elites colleges.
+
+vi. Histograms
+
+```{r}
+
+par(mfrow=c(2,3))
+hist(df_college$Apps, main="Apps", col = "chartreuse2")
+hist(df_college$Accept, main="Accepts", col = "chocolate2")
+hist(df_college$Enroll, main="Enroll", col = "cyan")
+hist(df_college$Room.Board, main="Room board", col = "lightblue3")
+hist(df_college$Personal, main="Personnal", col="lightgoldenrod3")
+hist(df_college$Books, main="Books", col="lightpink")
+
+```
+
+```{r}
+layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+hist(df_college$F.Undergrad, main="Full time Undergraduate", col = "mediumspringgreen")
+hist(df_college$Top10perc, main="Top of the school", col = "green")
+hist(df_college$Top25perc, add=T, col = "red")
+hist(df_college$Top10perc, col = "green", add=T)
+hist(df_college$Top25perc, add=T, col = rgb(1,0,1,0.5))
+legend("topright", c("Top 10%", "Top 25%"), fill=c("green", "red"))
+
+hist(df_college$Top10perc, main="Top 10%", col = "green")
+
+```
+
+
+###vii. Exploration
+
+Here an example of what I would do to better understand the data set.
+After looking at the scatterplot matrix I would use the ggplot2 library to look at the scatterplot of the most related variables, displaying the linear regression line.
+
+```{r}
+pairs.panels(df_college[,1:10], main="Pairwise correlation")
+pairs.panels(df_college[,10:20], main="Pairwise correlation")
+
+```
+
+```{r}
+ggplot(df_college, aes(x=Apps, y=Accept)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth()            # Add a loess smoothed fit curve with confidence region
+#> `geom_smooth()` using method = 'loess'
+```
+
+```{r}
+
+ggplot(df_college, aes(x=Accept, y=Enroll)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth(method=lm)   # Add linear regression line 
+                             #  (by default includes 95% confidence region)
+
+```
+
+```{r}
+ggplot(df_college, aes(x=F.Undergrad, y=Enroll)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth(method=lm)   # Add linear regression line 
+                             #  (by default includes 95% confidence region)
+```
+
+For the few models plotted here, a linear regression model would seems to be pertinent.
+
+## 2.2 Problem 2
+
+```{r}
+
+df_mpg <- read.csv("auto-mpg.csv", sep=",", header=T)
+df_mpg
+
+```
+
+
+###(a).i
+
+```{r}
+interrogation_rows <- which(df_mpg$horsepower == '?')
+cat("There are", length(interrogation_rows), "'?' at the indexes :", interrogation_rows)
+```
+
+```{r}
+df_mpg <- df_mpg[-which(df_mpg$horsepower == '?'), ]
+df_mpg
+```
+
+We can check that the interrogation dots have been removed because the new data_set only contains 392 rows.
+
+###(a).ii
+
+```{r}
+str(df_mpg$horsepower)
+```
+
+```{r}
+df_mpg$horsepower = as.integer(df_mpg$horsepower)
+str(df_mpg)
+```
+All attributes are either numeric or integer except for Car.name
+
+###(b)
+
+```{r}
+
+pairs.panels(df_mpg, main="Pairwise correlation")
+
+```
+
+```{r}
+pairs.panels(data.frame(df_mpg$mpg, df_mpg$weight))
+```
+
+Wa can notice a strong correlation between mpg and the weight.
+
+
+```{r}
+
+model <- lm(mpg ~ weight, data = df_mpg)
+summary(model)
+
+```
+
+The correlation seems to be very strong indeed, as thep-values associated with the F-statistics are close to zero.
+
+Regression equation : Cylinders = 46.22 -0.008 * displacement
+
+The adj R² value is 0.7. It's great, because it's relatively close to 1, but still inferior to it.
+The RSE value is 4.345. 
+
+```{r}
+rmse <- sqrt(sum((model$residuals)^2)/nrow(df_mpg))
+cat("The RMSE value is",rmse)
+```
+We cannot really assess the value of RSE or RMSE yet, because it depends on the precision needed for the result and the precision of models with other predictors.
+
+###(c)
+Plot of the model to check visually for obvious anormalities :
+
+```{r}
+plot(df_mpg$weight, df_mpg$mpg, main= "Cylinders and Displacement Plot", xlab = "weight", ylab = "mpg")
+abline(model, col = "blue")
+```
+
+The model seems to fit correcly the data. (No obvious anormalities)
+
+###(d).i
+Set-up :
+```{r}
+
+set.seed(1122)
+index <- sample(1:nrow(df_mpg), 0.80*dim(df_mpg)[1])
+df_train <- df_mpg[index, ]
+df_test <- df_mpg[-index, ]
+
+```
+
+We shouldn't use car.names as a predictor because car names are random variables, that we use as indexes, so they can't produce any relevent result.
+
+###(d).ii
+Creation of the linear regression model :
+```{r}
+
+model_all <- lm(mpg ~ .-car.name, data = df_train)
+summary(model_all)
+
+```
+
+
+Because we are dealing with several variables, we look at the multiple R² value, which is 0.82. It's great, because 0.7 < R² < 1.
+The RSE value is 3.19, we can notice that the RSE is better than when we used only the weight as a predictor (4.33).
+
+```{r}
+# Mean squared error
+mse <- mean(residuals(model_all)^2)
+
+# Root mean squared error
+rmse <- sqrt(mse)
+cat("The RMSE value is",rmse)
+```
+
+###(e).i
+
+```{r}
+model_back <- step(model_all, direction = "backward", trace=TRUE) 
+```
+
+```{r}
+summary(model_back)
+```
+
+###(e).ii
+
+According to the Pr(>|t|) value, the 3 most significant variables are : weight, year, origin.
+Analyse of a model with only these 3 :
+```{r}
+model_sig <- lm(mpg ~ weight + model.year + origin, data = df_train)
+
+summary(model_sig)
+```
+
+```{r}
+# Mean squared error
+mse <- mean(residuals(model_sig)^2)
+
+# Root mean squared error
+rmse <- sqrt(mse)
+cat("RMSE is", rmse, "\n")
+```
+
+R² is 0.83
+RSE is 3.24
+RMSE is 3.21
+
+Analysis of the model, to see if ot fit the data:
+
+  + mult R² = 0.82. it's great, because : 0.7<R²<1. It means that the value is useful, and it isn't overfitting.
+  + RSE and RMSE are very similar to the ones found with all the attributes (3.19), this is good because it means that we have the same residual sum of errors with 3 predictors instead of 7.
+
+###(f)
+Plot of the residuals.
+
+```{r}
+#1 fisrt way :
+plot(model_sig, 1)
+
+#2 second way :
+mpg_res <- resid(model_sig)
+plot(model_sig$fitted.values, model_sig$residuals, 
+     xlab = "Fitted values\nlm(sales ~.)", 
+     ylab="Residuals",
+          main="Residuals vs. Fitted"); 
+abline(0, 0)
+
+
+```
+
+Looks reasonably good as residuals appear homosceadastic and clustered around 0, even if they don’t appear to be normally distributed.
+
+
+###(g)
+
+```{r}
+
+hist(model_sig$residuals, xlab = "Model Residuals", 
+     main="Advertising Residual Histogram", col = "grey", freq = FALSE)
+lines(density(model_sig$residuals), lwd = 2,  col = "chocolate3")
+
+```
+
+The histogram approximately follows a gaussian distribution. So, the residuals seems to be approximately normally distributed.
+
+###(h)
+
+```{r}
+
+pred_mpg <-  predict(model_sig, df_test)
+
+actuals_preds <- data.frame(cbind(actuals=df_test$mpg, predicteds=pred_mpg)) 
+
+correlation_accuracy <- cor(actuals_preds)
+correlation_accuracy[1,2] * 100
+
+```
+
+There is an accuracy of 89.79% on our prediction.
+
+```{r}
+
+head(actuals_preds)
+
+```
+
+```{r}
+
+strictly_equal_rows <- which(actuals_preds$actuals == actuals_preds$predicteds)
+strictly_equal_rows
+
+round_equal_rows <- which(actuals_preds$actuals == round(actuals_preds$predicteds))
+round_equal_rows
+
+```
+
+There are no prediction whiches match exactly a variable from the test set
+There are 8 predictions whiches match the round values of variables from the test set.
+
+
+```{r}
+#res_vect <- resid(model_sig)
+res_vect <- actuals_preds$actuals - actuals_preds$predicteds
+n <- length(res_vect)
+
+rss <- sum(res_vect^2)
+tss <- sum((actuals_preds$actuals - mean(actuals_preds$actuals))^2)
+r_sq <- (1-(rss/tss))
+rse <- sqrt((1/(n-3-1))*rss)
+f_par <- (((tss-rss)/3)/(rss/(n-3-1)))
+rmse <- sqrt(sum((res_vect)^2)/n)
+
+cat("RSS is", rss, "\n")
+cat("TSS is", tss, "\n")
+cat("R square is", r_sq, ", so 0.7< R² <1, which mean that this R² value is great and we aren't overfitting. \n")
+cat("F Parameter is", f_par, ", which is good, the more the F parameter is big, the better it is. \n")
+cat("RSE is", rse, ", considering that the RSE of our model was 3.31, our predictions are relevants. \n")
+cat("RMSE is", rmse, ", same observation than RSE. \n")
+```
+Based on the statistic above, the model is performing well.
+
+

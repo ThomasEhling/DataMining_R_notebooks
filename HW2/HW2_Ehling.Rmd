@@ -1,0 +1,588 @@
+---
+title: "CS 422 Section 04 Homework 2"
+author: "Thomas Ehling A20432671"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+## Homework 2
+### Due Date: Friday, October 12, 2018 11:59:59 PM Chicago Time
+
+## 1 Exercices
+
+### Chapter 4 : q2
+
+### Chapter 4 : q3
+
+### Chapter 4 : q5
+
+
+## 2 Practiclum Problems
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(pROC)
+library(caret)
+library(randomForest)
+library(arules)
+library(arulesViz)
+library(RColorBrewer)
+```
+
+
+## 2.1 Problem 1
+
+```{r}
+set.seed(1122)
+
+setwd('/home/french_magician/Documents/Chicago/DM/Assigment_2')
+
+rm(list=ls())
+
+options("digits"=3)
+
+df_census <- read.csv("adult-train.csv", sep=",", header=T)
+df_census_test <- read.csv("adult-test.csv", sep=",", header=T)
+
+summary(df_census)
+```
+
+### 2.1-A
+
+```{r}
+df_census
+```
+
+```{r}
+for (i in 1:ncol(df_census)){
+  interrogation_rows <- which(df_census[,i] == '?')
+  if (length(interrogation_rows) != 0){
+      cat("Removing", length(interrogation_rows), "'?' for the attribute : ", names(df_census)[i], "\n")
+      df_census<- df_census[-which(df_census[,i] == '?'), ]
+  }
+}
+```
+
+```{r}
+df_census
+```
+
+There are 30, 161  rows left, the rows with "?" have been removed.
+
+For the Test data set now :
+
+
+```{r}
+df_census_test
+```
+
+```{r}
+for (i in 1:ncol(df_census_test)){
+  interrogation_rows <- which(df_census_test[,i] == '?')
+  if (length(interrogation_rows) != 0){
+      cat("Removing", length(interrogation_rows), "'?' for the attribute : ", names(df_census_test)[i], "\n")
+      df_census_test<- df_census_test[-which(df_census_test[,i] == '?'), ]
+  }
+}
+```
+
+```{r}
+df_census_test
+```
+
+There are 15, 060 rows left, the rows with "?" have been removed.
+
+### 2.1-B-i
+
+```{r}
+str(df_census$income)
+```
+
+As the attrivute "income" is a factor, the methode used for the tree is "class".
+
+```{r}
+tree <- rpart(income ~ ., data = df_census, method = "class")
+rpart.plot(tree, extra=104, fallen.leaves = T, type=4, main="Rpart on Cencus data (Full Tree)")
+```
+
+
+```{r}
+summary(tree)
+```
+
+The top three important predictors are :
+
+1 ) relationship
+
+2 ) marital_status
+
+3 ) capital_gain 
+
+### 2.1-B-ii
+
+The first split is done on the predictor relationship. 
+The predicted class of the first node is "<=50k".
+The distribution of observations between the “<=50K” and “>50K” classes at first node is : 0.751 / 0.249, So  there are 22653 observations whose income are under 50k and 7508 observations with greater income than 50k.
+
+### 2.1-C
+
+```{r}
+#predict the class for the elementsof the test dataset
+predict_class <- predict(tree, newdata = df_census_test, type="class")
+
+#predict the probabilities
+predict_prob <- predict(tree, newdata = df_census_test, type="prob") 
+
+#creation of a data set with the real values, the predictions and the probabilities.
+df_predict <- data.frame(df_census_test$income, predict_class, predict_prob)
+colnames(df_predict) <- c("real_values","predictions","inf_or_equal_50k", "sup_50k")
+head(df_predict)
+```
+
+```{r}
+summary(df_predict)
+```
+
+Manual calculation of TP, FP, FN and TN (confusion matric=x components) :
+```{r}
+df_predict_sup <- df_predict[df_predict$real_values == "<=50K",]
+df_predict_inf <- df_predict[df_predict$real_values == ">50K",]
+
+predict_tp <- nrow(df_predict_sup[df_predict_sup$real_values == df_predict_sup$predictions,])
+predict_fn <- nrow(df_predict_sup[df_predict_sup$real_values != df_predict_sup$predictions,])
+predict_tn <- nrow(df_predict_inf[df_predict_inf$real_values == df_predict_inf$predictions,])
+predict_fp <- nrow(df_predict_inf[df_predict_inf$real_values != df_predict_inf$predictions,])
+
+cat(" Check : Total = ", predict_fn+predict_fp+predict_tn+predict_tp, " and there are ", nrow(df_predict), "predictions \n\n")
+
+cat("TP =", predict_tp, "\n")
+cat("FP =", predict_fp, "\n")
+cat("FN =", predict_fn, "\n")
+cat("TN =", predict_tn, "\n")
+
+```
+
+There is also the built-in function table to print the confusion matrix :
+```{r}
+confusionMatrix(predict_class, as.factor(df_census_test$income))
+```
+
+### 2.1-C-i
+
+```{r}
+predict_sensitivity = predict_tp/(predict_tp+predict_fn)
+predict_specificity = predict_tn/(predict_tn+predict_fp)
+predict_precision = predict_tp/(predict_tp+predict_fp)
+
+cat("TPR =", predict_sensitivity, "\n")
+cat("TNR =", predict_specificity, "\n")
+cat("PPV =", predict_precision, "\n")
+```
+
+```{r}
+predict_balanced_accuracy = (predict_sensitivity + predict_specificity)/2
+
+cat("balanced accuracy =", predict_balanced_accuracy, "\n")
+```
+The balanced accuracy of this model is 0.726
+
+### 2.1-C-ii
+
+```{r}
+cat("balanced error =", 1-predict_balanced_accuracy, "\n")
+```
+The balanced error rate of this model is 0.274
+
+### 2.1-C-iii
+
+```{r}
+cat("model sensitivity =", predict_sensitivity, "\n")
+cat("model specificity =", predict_specificity, "\n")
+```
+
+The sensitivity of this model is 0.948
+The specificity of this model is 0.503
+
+### 2.1-C-iv
+
+```{r}
+
+predict_false_positive_rate = predict_fp/(predict_tn+predict_fp)
+cat("FPR =", predict_false_positive_rate, "\n")
+
+```
+
+```{r pred_chunk}
+# ROC curve
+predict_class.rocr <- predict(tree, newdata=df_census_test, type="prob")[,2]
+f.pred <- prediction(predict_class.rocr, df_census_test$income)
+f.perf <- performance(f.pred, "tpr", "fpr")
+plot(f.perf, colorize=T, lwd=3)
+abline(lines(x = c(0,1), y = c(0,1), col="grey", lwd=3, lty=2))
+auc <- performance(f.pred, measure = "auc")
+```
+```{r}
+cat(paste("The area under curve (AUC) for this model is ", round(auc@y.values[[1]], 3)))
+```
+
+### 2.1.D
+
+```{r}
+options("digits"=5)
+printcp(tree)
+```
+
+We can notice than the xerror value decrease,  but never increase again, so there is no need to prune the tree.
+
+If the Xerror has raised again at some point, we would have pruned the tree at the complexity level of the lowest Xerror value.
+
+### 2.1.E-i
+
+```{r}
+summary(df_census$income)
+```
+In the training data_set, there are 22653 observations for <= 50k and 7508 observations for >50k
+
+### 2.1.E-ii
+
+```{r}
+
+## rows that have "z" and "zz" entries
+inf_ind <- which(df_census$income == "<=50K")
+sup_ind <- which(df_census$income == ">50K")
+
+nsamp <- min(length(inf_ind), length(sup_ind))
+
+## select `nsamp` entries with "z" and `nsamp` entries with "zz"
+pick_inf <- sample(inf_ind, nsamp)
+pick_sup <- sample(sup_ind, nsamp)
+
+df_census_even <- df_census[c(pick_inf, pick_sup), ]
+
+df_census_even
+
+```
+
+We check if the new data set is balanced :
+
+```{r}
+summary(df_census_even$income)
+```
+
+### 2.1.E-iii
+
+```{r}
+tree_even <- rpart(income ~ ., data = df_census_even, method = "class")
+rpart.plot(tree_even, extra=104, fallen.leaves = T, type=4, main="Rpart on Even Cencus data (Full Tree)")
+```
+
+```{r}
+summary(tree_even)
+```
+
+```{r}
+#predict the class for the elementsof the test dataset
+predict_even <- predict(tree_even, newdata = df_census_test, type="class")
+confusionMatrix(predict_even, as.factor(df_census_test$income))
+```
+
+The balanced acuracy is 0.809
+The balanced error rate is 0.191
+The sensitivity is 0.782
+The specificity is 0.835
+
+```{r pred_chunk_even}
+# ROC curve
+predict_even.rocr <- predict(tree_even, newdata=df_census_test, type="prob")[,2]
+f.pred <- prediction(predict_even.rocr, df_census_test$income)
+f.perf <- performance(f.pred, "tpr", "fpr")
+plot(f.perf, colorize=T, lwd=3)
+abline(lines(x = c(0,1), y = c(0,1), col="grey", lwd=3, lty=2))
+auc_even <- performance(f.pred, measure = "auc")
+```
+
+```{r}
+cat(paste("The area under curve (AUC) for this model is ", round(auc_even@y.values[[1]], 3)))
+```
+
+### 2.1.F
+
+Comparaison between the 1) Umbalanced model and 2) balanced model
+
+Balanced accuracy : 1) 0.726 | 2) 0.809 : The balanced model is more accurate, it's good but not sufficent alone.
+
+Balanced error rate : 1) 0.274 | 2) 0.191 : The balanced model has a lower error rate (Normal, it accuracy was better)
+
+Sensitivity : 1) 0.948 | 2) 0.782 : The unbalanced model predict more True Positive that the balanced one.
+
+Specificity : 1) 0.503 | 2) 0.835 : The balanced model predict more False Positive that the unbalanced one.
+
+With the Specitivity and Specificity combined, we can notice that the balanced model has more balanced results, it predicted roughly as much True Positive than True Negative.
+
+AUC : 1) 0.843 | 2) 0.846 : The balanced model has a greater area under the ROC curve, it's great.
+
+With all these results, we can notice that the balanced model is better than the unbalanced one.
+
+## 2.2 Problem 2
+
+```{r}
+set.seed(1122)
+```
+
+### 2.2-A-i
+
+```{r}
+rf_tree <- randomForest(income ~ ., data=df_census, importance=TRUE)
+```
+
+```{r}
+print(rf_tree)
+```
+
+```{r}
+#predict the class for the elementsof the test dataset
+predict_rf <- predict(rf_tree, newdata = df_census_test, type="class")
+confusionMatrix(predict_rf, as.factor(df_census_test$income))
+```
+
+### 2.2-A-i
+
+The Balanced Accuracy of the model is 0.784
+
+### 2.2-A-ii
+
+The Accuracy of the model is 0.858
+
+### 2.2-A-iii
+
+The Sensitivity of the model is 0.930
+The Specificity of the model is 0.638
+
+### 2.2-A-iv
+
+Response class distribution of the model :
+  - <=50k : 11903
+  - >50k : 3157
+  
+
+### 2.2-A-v
+
+Given the response class distribution, the sensitivity and specificity does make sense.
+The dtataset is very unbalanced, so it is normal that the response distribution class is unbalanced too.
+And it makes sense that sensitivity is much higher than specificity since there are much more data with the positive class.
+
+### 2.2-A-vi
+
+Look at important variables
+```{r}
+varImpPlot(rf_tree)
+```
+
+
+For the MeanDecreaseAccuracy :
+  - most important variable : capital_gain
+  - least important variable : fnlwgt
+  
+For the MeanDecreaseGini :
+  - most important variable : relationship
+  - least important variable : race
+  
+### 2.2-A-vii
+
+```{r}
+print(rf_tree)
+```
+
+There are 3 variables tried at each split.
+
+### 2.2-B-i
+
+```{r}
+predictors <- df_census
+predictors$income <- NULL
+
+mtry <- tuneRF(predictors , df_census$income, ntreeTry=500, stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
+```
+
+The default value of mtry is the same a randomForest, and is the square root value of the number of variables in the data_set.
+For us, the default value of mtry is 3.8
+
+
+### 2.2-B-ii
+
+```{r}
+options("digits"=5)
+print(mtry)
+options("digits"=3)
+```
+The optimal value for mtry suggested by the model is 2.
+
+### 2.2-B-iii
+
+```{r}
+rf_tree_opt <- randomForest(income ~ ., data=df_census, importance=TRUE, mtry=2)
+```
+
+```{r}
+print(rf_tree_opt)
+```
+
+```{r}
+#predict the class for the elementsof the test dataset
+predict_rf <- predict(rf_tree_opt, newdata = df_census_test, type="class")
+
+confusionMatrix(predict_rf, as.factor(df_census_test$income))
+```
+
+### 2.2-B-iii-(1)
+
+The Balanced Accuracy of the model is 0.784
+
+### 2.2-B-iii-(2)
+
+The Accuracy of the model is 0.860
+
+### 2.2-B-iii-(3)
+
+The Sensitivity of the model is 0.935
+The Specificity of the model is 0.633
+
+### 2.2-B-iii-(4)
+
+```{r}
+varImpPlot(rf_tree_opt)
+```
+
+
+For the MeanDecreaseAccuracy :
+  - most important variable : capital_gain
+  - least important variable : fnlwgt
+  
+For the MeanDecreaseGini :
+  - most important variable : capital_gain
+  - least important variable : race
+  
+### 2.2-B-iii-(5)
+
+The Accuracy and Sensitivity of the new model are greater that the last one, where the specificity is lower.
+
+However the Balanced Accuracy is the same.
+
+We can notive from there variations that the new model is slightly more efficient that the last one.
+
+The importance of the variables changed for the MeanDecreaseGini, now the most important variable is capital_gain where it was relationship before.
+
+
+## 2.3 Association rules
+
+```{r}
+trans <- read.transactions("groceries.csv", sep=",")
+summary(trans)
+```
+
+```{r}
+inspect(trans[1:5])
+```
+
+### 2.3-i
+
+```{r}
+rules <- apriori(trans)
+rm(rules)
+```
+
+We obtain no rules at all.
+
+### 2.3-ii
+
+```{r}
+rules <- apriori(trans, parameter = list(support=0.001))
+```
+
+We got more that 400 rules for a support value of 0.001.
+
+### 2.3-iii
+
+```{r}
+trans_dec = sort(itemFrequency(trans), decreasing=TRUE)
+
+barplot(head(trans_dec, 5),col=brewer.pal(8,'Pastel2'), main="Plot of the 5 most frequent item")
+```
+
+The most frequent item is Whole Milk.
+
+### 2.3-iv
+
+
+
+```{r}
+trans_dec = sort(itemFrequency(trans), decreasing=FALSE)
+
+barplot(head(trans_dec, 5),col=brewer.pal(8,'Pastel2'), main="Plot of the 5 least frequent item")
+```
+
+```{r}
+head(trans_dec, 5)
+```
+
+The least frequent item is baby food.
+
+### 2.3-v
+
+The top 5 rules, sorted by support are :
+
+```{r}
+inspect(head(n=5, rules, by="support"))
+```
+
+### 2.3-vi
+
+The top 5 rules, sorted by confidence are :
+
+```{r}
+inspect(head(n=5, rules, by="confidence"))
+```
+
+### 2.3-vii
+
+The bottom 5 rules, sorted by support are :
+
+```{r}
+inspect(tail(n=5, rules, by="support"))
+```
+
+### 2.3-viii
+
+The bottom 5 rules, sorted by support are :
+
+```{r}
+inspect(tail(n=5, rules, by="confidence"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
